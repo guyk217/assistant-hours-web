@@ -1,5 +1,6 @@
 let pyodide;
 
+// Initialize Python runtime
 async function initPyodideAndPackages() {
   const status = document.getElementById("status");
   const processBtn = document.getElementById("process-btn");
@@ -8,31 +9,29 @@ async function initPyodideAndPackages() {
   processBtn.disabled = true;
 
   try {
-    // Load Pyodide itself
+    // Load Pyodide
     pyodide = await loadPyodide();
 
-    // Load core built-in packages
-    await pyodide.loadPackage(["pandas", "micropip"]);
-
-    // Install openpyxl using micropip
+    // Install pandas and openpyxl via micropip
     await pyodide.runPythonAsync(`
 import micropip
-await micropip.install("openpyxl")
+await micropip.install(["pandas", "openpyxl"])
 `);
 
     status.innerText = "✅ Ready to process files.";
     processBtn.disabled = false;
   } catch (e) {
-    status.innerText = "❌ Failed to load Python environment.";
-    console.error(e);
+    status.innerText = "❌ Failed to initialize Python.";
+    console.error("Pyodide init error:", e);
   }
 }
 
 initPyodideAndPackages();
 
+// Handle processing
 document.getElementById("process-btn").addEventListener("click", async () => {
   if (!pyodide) {
-    alert("Please wait until the Python environment finishes loading.");
+    alert("Please wait until the Python environment is ready.");
     return;
   }
 
@@ -45,22 +44,22 @@ document.getElementById("process-btn").addEventListener("click", async () => {
   const file = fileInput.files[0];
   const arrayBuffer = await file.arrayBuffer();
 
-  // Show spinning tooth 🦷
+  // Show 🦷 spinner
   document.getElementById("loader").style.display = "block";
   document.getElementById("status").innerText = "";
 
   try {
-    // Write uploaded file into Pyodide virtual FS
+    // Write Excel file to virtual FS
     pyodide.FS.writeFile(file.name, new Uint8Array(arrayBuffer));
 
-    // Load and run your Python logic
+    // Run your Python logic
     const pythonCode = await (await fetch("app.py")).text();
     await pyodide.runPythonAsync(pythonCode + `\nprocess_excel("${file.name}")`);
 
-    // Retrieve processed Excel
+    // Read result
     const data = pyodide.FS.readFile("summary_hours.xlsx", { encoding: "binary" });
 
-    // Create downloadable blob
+    // Create downloadable file
     const blob = new Blob([data], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
@@ -70,12 +69,12 @@ document.getElementById("process-btn").addEventListener("click", async () => {
     a.download = "summary_hours.xlsx";
     a.click();
 
-    // Hide loader + show success
+    // Hide loader, show success
     document.getElementById("loader").style.display = "none";
     document.getElementById("status").innerText = "✅ Done! File downloaded.";
   } catch (err) {
     document.getElementById("loader").style.display = "none";
     document.getElementById("status").innerText = "❌ Error: " + err;
-    console.error(err);
+    console.error("Processing error:", err);
   }
 });
