@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Clinic Assistant Hours Summary 🦷</title>
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+  <title>Assistant Hours Summary 🦷</title>
+
+  <!-- ✅ Fixed: use stable Pyodide CDN -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
   <script defer src="script.js"></script>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
     * { box-sizing: border-box; }
     body {
@@ -28,25 +33,18 @@
       text-align: center;
       width: 90%;
       max-width: 520px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.1);
     }
 
     h1 {
       color: #0078d7;
       font-size: 2rem;
       font-weight: 700;
-      margin-bottom: 15px;
+      margin: 0 0 15px 0;
     }
 
     p.subtitle {
       color: #4b5563;
-      margin-top: 0;
-      margin-bottom: 45px;
+      margin: 0 0 45px 0;
       font-size: 1rem;
       line-height: 1.6;
     }
@@ -65,30 +63,21 @@
       align-items: center;
     }
 
-    .upload-box:hover {
-      background-color: #eaf5ff;
-      transform: scale(1.02);
-    }
+    .upload-box:hover { background-color: #eaf5ff; transform: scale(1.02); }
+    .upload-box.dragover { background-color: #dbeeff; border-color: #005ea0; }
 
-    .upload-box.dragover {
-      background-color: #dbeeff;
-      border-color: #005ea0;
-    }
-
-    input[type=file] {
-      display: none;
-    }
+    input[type=file] { display: none; }
 
     #file-name {
-      margin-bottom: 25px;
+      margin: 12px 0 20px;
       font-size: 0.95rem;
       color: #555;
       font-style: italic;
+      min-height: 1.2em;
     }
 
     button {
       display: inline-block;
-      margin-top: 15px;
       padding: 13px 32px;
       font-size: 1rem;
       font-weight: 600;
@@ -100,38 +89,32 @@
       transition: background-color 0.25s ease;
     }
 
-    button:hover {
-      background-color: #005ea0;
-    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button:hover:not(:disabled) { background-color: #005ea0; }
 
-    #loader {
-      display: none;
-      margin-top: 40px;
-    }
-
-    .tooth {
-      font-size: 3.5rem;
-      animation: spin 1.2s linear infinite;
-      margin-bottom: 10px;
-    }
-
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-
-    #loader p {
-      margin: 0;
-      color: #0078d7;
-      font-weight: 600;
-      font-size: 1rem;
-    }
+    #loader { display: none; margin-top: 32px; }
+    .tooth { font-size: 3.5rem; animation: spin 1.2s linear infinite; margin-bottom: 10px; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     #status {
       margin-top: 30px;
-      font-size: 0.95rem;
+      font-size: 1rem;
+      font-weight: 600;
       color: #374151;
-      font-weight: 500;
+    }
+
+    /* ✅ Beautiful error styling */
+    #status.error {
+      color: #d32f2f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    #status.error::before {
+      content: "❌";
+      font-size: 1.2rem;
     }
 
     footer {
@@ -141,11 +124,12 @@
     }
   </style>
 </head>
+
 <body>
   <div class="card">
     <h1>Assistant Hours Summary 🦷</h1>
-    <p class="subtitle">Upload your clinic Excel report or drag and drop it below<br>to generate a summarized report per assistant.</p>
-    
+    <p class="subtitle">Upload your clinic Excel report or drag & drop it below<br>to generate a summarized report per assistant.</p>
+
     <label class="upload-box" for="file-upload" id="upload-box">
       <strong>📂 Drag & Drop your file here</strong>
       <br><br>
@@ -154,51 +138,17 @@
 
     <input type="file" id="file-upload" accept=".xls,.xlsx">
     <div id="file-name"></div>
+
     <button id="process-btn" disabled>Process File</button>
 
     <div id="loader">
       <div class="tooth">🦷</div>
-      <p>Processing your file...</p>
+      <div>Processing your file...</div>
     </div>
 
     <p id="status"></p>
   </div>
 
   <footer>© 2025 Clinic Assistant Hours App</footer>
-
-  <script>
-    const uploadBox = document.getElementById("upload-box");
-    const fileInput = document.getElementById("file-upload");
-    const fileNameDisplay = document.getElementById("file-name");
-
-    uploadBox.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      uploadBox.classList.add("dragover");
-    });
-
-    uploadBox.addEventListener("dragleave", () => {
-      uploadBox.classList.remove("dragover");
-    });
-
-    uploadBox.addEventListener("drop", (e) => {
-      e.preventDefault();
-      uploadBox.classList.remove("dragover");
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        fileInput.files = e.dataTransfer.files;
-        showFileName(file);
-      }
-    });
-
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) showFileName(file);
-    });
-
-    function showFileName(file) {
-      fileNameDisplay.textContent = `📄 ${file.name}`;
-      document.getElementById("process-btn").disabled = false;
-    }
-  </script>
 </body>
 </html>
