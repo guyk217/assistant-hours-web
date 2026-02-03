@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦷 DentaHours - Dental Office Hours Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- SheetJS for Excel processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        /* === CSS Variables === */
+        :root {
+            --primary: #0EA5E9;
+            --primary-light: #38BDF8;
+            --primary-dark: #0284C7;
+            --secondary: #06B6D4;
+            --accent: #F0FDFA;
+            --tooth-white: #F8FAFC;
+            --tooth-cream: #F1F5F9;
+            --tooth-pearl: #E2E8F0;
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --error: #EF4444;
+            --error-light: #FEE2E2;
+            --text-primary: #0F172A;
+            --text-secondary: #475569;
+            --text-muted: #94A3B8;
+            --border: #CBD5E1;
+            --gradient-primary: linear-gradient(135deg, #0EA5E9 0%, #06B6D4 100%);
+            --gradient-bg: linear-gradient(180deg, #F0FDFA 0%, #E0F2FE 50%, #F8FAFC 100%);
+            --gradient-card: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+            --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+            --shadow-glow: 0 0 40px rgba(14, 165, 233, 0.15);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+            --font-display: 'Outfit', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+        }
+
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html { font-size: 16px; scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-display);
+            background: var(--gradient-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .bg-pattern {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(14, 165, 233, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(6, 182, 212, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(14, 165, 233, 0.05) 0%, transparent 30%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .floating-teeth {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .tooth {
+            position: absolute;
+            font-size: 2rem;
+            opacity: 0.1;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .tooth-1 { top: 10%; left: 5%; animation-delay: 0s; font-size: 1.5rem; }
+        .tooth-2 { top: 20%; right: 10%; animation-delay: 4s; font-size: 2.5rem; }
+        .tooth-3 { top: 60%; left: 8%; animation-delay: 8s; font-size: 1.8rem; }
+        .tooth-4 { top: 75%; right: 5%; animation-delay: 12s; font-size: 2rem; }
+        .tooth-5 { top: 40%; right: 3%; animation-delay: 16s; font-size: 1.6rem; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-20px) rotate(5deg); }
+            50% { transform: translateY(0) rotate(0deg); }
+            75% { transform: translateY(20px) rotate(-5deg); }
+        }
+
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: var(--shadow-lg), 0 0 40px rgba(14, 165, 233, 0.15); }
+            50% { transform: scale(1.02); box-shadow: var(--shadow-xl), 0 0 60px rgba(14, 165, 233, 0.25); }
+        }
+
+        .tooth-svg {
+            width: 45px;
+            height: 45px;
+            color: white;
+        }
+
+        .logo-text h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .tagline {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .upload-card {
+            background: var(--gradient-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .card-icon { font-size: 2.5rem; display: block; margin-bottom: 0.75rem; }
+
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .card-header p { color: var(--text-secondary); font-size: 0.95rem; }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--tooth-white);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--primary);
+            background: var(--accent);
+        }
+
+        .drop-zone.drag-over {
+            transform: scale(1.01);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .drop-zone.drag-over::before { opacity: 0.05; }
+
+        .drop-zone-content { position: relative; z-index: 1; }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        .upload-icon svg { width: 100%; height: 100%; }
+
+        .drop-text {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-subtext {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .browse-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 2rem;
+            background: var(--gradient-primary);
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .browse-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg), var(--shadow-glow);
+        }
+
+        .file-types {
+            margin-top: 1.25rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .file-preview {
+            margin-top: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: var(--accent);
+            border: 1px solid var(--primary-light);
+            border-radius: var(--radius-md);
+        }
+
+        .file-icon { font-size: 2rem; }
+        .file-details { flex: 1; }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        .file-size {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+        }
+
+        .remove-file {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+
+        .remove-file:hover {
+            background: var(--error-light);
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .remove-file svg { width: 18px; height: 18px; }
+
+        .process-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 1.25rem 2rem;
+            margin-top: 2rem;
+            background: var(--gradient-primary);
+            color: white;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .process-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .process-btn:not(:disabled):hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-xl), var(--shadow-glow);
+        }
+
+        .process-btn:not(:disabled):hover::before { opacity: 1; }
+
+        .process-btn:disabled {
+            background: var(--tooth-pearl);
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-icon {
+            font-size: 1.3rem;
+            animation: wiggle 2s ease-in-out infinite;
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+
+        .process-btn:disabled .btn-icon {
+            animation: none;
+            opacity: 0.5;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .loading-content { text-align: center; }
+        .tooth-spinner { margin-bottom: 1.5rem; }
+
+        .spinner-tooth {
+            font-size: 4rem;
+            animation: spin 1.5s ease-in-out infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .loading-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .loading-subtext { color: var(--text-muted); font-size: 0.95rem; }
+
+        .result-card {
+            margin-top: 2rem;
+            background: var(--gradient-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.5s ease;
+        }
+
+        .result-header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .result-header.success {
+            background: var(--success-light);
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .result-header.error {
+            background: var(--error-light);
+            border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .result-icon { font-size: 2rem; }
+
+        .result-header h3 { font-size: 1.25rem; font-weight: 700; }
+        .result-header.success h3 { color: #065F46; }
+        .result-header.error h3 { color: #991B1B; }
+
+        .result-body { padding: 2rem; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat {
+            text-align: center;
+            padding: 1.25rem;
+            background: var(--tooth-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            font-family: var(--font-mono);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .result-message {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            padding: 0 1rem;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 1.1rem 2rem;
+            background: var(--success);
+            color: white;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 1rem;
+        }
+
+        .download-btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .download-btn svg { width: 22px; height: 22px; }
+
+        .reset-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .reset-btn:hover {
+            background: var(--tooth-white);
+            border-color: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            animation: slideUp 0.6s ease-out 0.4s both;
+        }
+
+        .footer p { color: var(--text-secondary); font-size: 0.9rem; }
+
+        .footer-note {
+            margin-top: 0.5rem;
+            font-size: 0.8rem !important;
+            color: var(--text-muted) !important;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 1.5rem 1rem; }
+            .logo-icon { width: 64px; height: 64px; }
+            .tooth-svg { width: 35px; height: 35px; }
+            .logo-text h1 { font-size: 2rem; }
+            .upload-card { padding: 1.5rem; }
+            .drop-zone { padding: 2rem 1.5rem; }
+            .upload-icon { width: 48px; height: 48px; }
+            .stats { grid-template-columns: 1fr; }
+            .floating-teeth { display: none; }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --tooth-white: #1E293B;
+                --tooth-cream: #1E293B;
+                --tooth-pearl: #334155;
+                --text-primary: #F1F5F9;
+                --text-secondary: #94A3B8;
+                --text-muted: #64748B;
+                --border: #334155;
+                --gradient-bg: linear-gradient(180deg, #0F172A 0%, #1E293B 50%, #0F172A 100%);
+                --gradient-card: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+                --accent: #0F172A;
+                --success-light: rgba(16, 185, 129, 0.15);
+                --error-light: rgba(239, 68, 68, 0.15);
+            }
+            body { background: var(--gradient-bg); }
+            .result-header.success h3 { color: #6EE7B7; }
+            .result-header.error h3 { color: #FCA5A5; }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Floating teeth decorations -->
+    <div class="floating-teeth">
+        <div class="tooth tooth-1">🦷</div>
+        <div class="tooth tooth-2">🦷</div>
+        <div class="tooth tooth-3">🦷</div>
+        <div class="tooth tooth-4">🦷</div>
+        <div class="tooth tooth-5">🦷</div>
+    </div>
+
+    <!-- Background pattern -->
+    <div class="bg-pattern"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 100 100" class="tooth-svg">
+                        <path d="M50 5 C30 5 15 25 15 45 C15 55 20 70 25 85 C28 93 35 95 40 95 C45 95 48 90 50 80 C52 90 55 95 60 95 C65 95 72 93 75 85 C80 70 85 55 85 45 C85 25 70 5 50 5 Z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>DentaHours</h1>
+                    <p class="tagline">Dental Office Hours Calculator</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <!-- Upload card -->
+            <div class="upload-card">
+                <div class="card-header">
+                    <span class="card-icon">📊</span>
+                    <h2>Upload Your Hours Sheet</h2>
+                    <p>Drop your Excel file and we'll calculate the summary for you</p>
+                </div>
+
+                <!-- Drop zone -->
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-content">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <p class="drop-text">Drag & drop your Excel file here</p>
+                        <p class="drop-subtext">or</p>
+                        <button class="browse-btn" id="browseBtn">
+                            <span>Browse Files</span>
+                        </button>
+                        <p class="file-types">Supports .xls and .xlsx files</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".xls,.xlsx" hidden>
+                </div>
+
+                <!-- File preview -->
+                <div class="file-preview hidden" id="filePreview">
+                    <div class="file-info">
+                        <div class="file-icon">📄</div>
+                        <div class="file-details">
+                            <p class="file-name" id="fileName"></p>
+                            <p class="file-size" id="fileSize"></p>
+                        </div>
+                        <button class="remove-file" id="removeFile" title="Remove file">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Process button -->
+                <button class="process-btn" id="processBtn" disabled>
+                    <span class="btn-text">Calculate Hours</span>
+                    <span class="btn-icon">🦷</span>
+                </button>
+            </div>
+
+            <!-- Loading state -->
+            <div class="loading-overlay hidden" id="loadingOverlay">
+                <div class="loading-content">
+                    <div class="tooth-spinner">
+                        <div class="spinner-tooth">🦷</div>
+                    </div>
+                    <p class="loading-text">Processing your data...</p>
+                    <p class="loading-subtext">Brushing through the numbers</p>
+                </div>
+            </div>
+
+            <!-- Result card -->
+            <div class="result-card hidden" id="resultCard">
+                <div class="result-header success" id="resultHeader">
+                    <div class="result-icon">✨</div>
+                    <h3 id="resultTitle">Processing Complete!</h3>
+                </div>
+                <div class="result-body">
+                    <div class="stats" id="stats">
+                        <div class="stat">
+                            <span class="stat-value" id="tablesFound">0</span>
+                            <span class="stat-label">Tables Found</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="recordsCount">0</span>
+                            <span class="stat-label">Records Processed</span>
+                        </div>
+                    </div>
+                    <p class="result-message" id="resultMessage"></p>
+                    <button class="download-btn hidden" id="downloadBtn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <span>Download Summary</span>
+                    </button>
+                    <button class="reset-btn" id="resetBtn">
+                        <span>Process Another File</span>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with 💙 for dental professionals</p>
+            <p class="footer-note">All processing happens in your browser - your data never leaves your device</p>
+        </footer>
+    </div>
+
+    <script>
+        /**
+         * DentaHours - Dental Office Hours Calculator
+         * Client-side Excel processing using SheetJS
+         */
+
+        // Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFile = document.getElementById('removeFile');
+        const processBtn = document.getElementById('processBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultCard = document.getElementById('resultCard');
+        const resultHeader = document.getElementById('resultHeader');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultMessage = document.getElementById('resultMessage');
+        const tablesFound = document.getElementById('tablesFound');
+        const recordsCount = document.getElementById('recordsCount');
+        const stats = document.getElementById('stats');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        let selectedFile = null;
+        let processedData = null;
+
+        // Format file size
+        const formatFileSize = (bytes) => {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
+        // Validate file
+        const validateFile = (file) => {
+            const validExtensions = ['.xls', '.xlsx'];
+            const extension = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validExtensions.includes(extension)) {
+                return { valid: false, message: 'Please upload an Excel file (.xls or .xlsx)' };
+            }
+            
+            return { valid: true };
+        };
+
+        // Handle file selection
+        const handleFileSelect = (file) => {
+            const validation = validateFile(file);
+            
+            if (!validation.valid) {
+                alert(validation.message);
+                return;
+            }
+            
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            
+            dropZone.classList.add('hidden');
+            filePreview.classList.remove('hidden');
+            processBtn.disabled = false;
+            
+            resultCard.classList.add('hidden');
+        };
+
+        // Reset file selection
+        const resetFileSelection = () => {
+            selectedFile = null;
+            processedData = null;
+            fileInput.value = '';
+            dropZone.classList.remove('hidden');
+            filePreview.classList.add('hidden');
+            processBtn.disabled = true;
+        };
+
+        // Show/hide loading
+        const showLoading = () => loadingOverlay.classList.remove('hidden');
+        const hideLoading = () => loadingOverlay.classList.add('hidden');
+
+        /**
+         * Split dataframe into sub-tables based on markers
+         */
+        function splitTables(data) {
+            const tables = [];
+            let startIndices = [];
+            let endIndices = [];
+
+            // Find rows containing markers
+            data.forEach((row, idx) => {
+                const rowStr = row.map(cell => String(cell || '')).join(' ');
+                if (rowStr.includes('כניסה')) startIndices.push(idx);
+                if (rowStr.includes('חתימה')) endIndices.push(idx);
+            });
+
+            // Create tables from start to end markers
+            for (const start of startIndices) {
+                const end = endIndices.find(e => e > start);
+                if (end !== undefined) {
+                    tables.push(data.slice(start, end + 1));
+                } else {
+                    tables.push(data.slice(start));
+                }
+            }
+
+            return tables;
+        }
+
+        /**
+         * Parse a single table to extract assistant, doctor, hours
+         */
+        function parseTable(table) {
+            if (table.length < 2) return [];
+
+            // Get assistant name from row 0, column 1
+            const assistant = String(table[0][1] || 'Unknown').trim();
+            const records = [];
+
+            // Parse rows starting from row 1
+            for (let i = 1; i < table.length; i++) {
+                const row = table[i];
+                let doctor = row[0];
+                let hours = row[1];
+
+                // Skip empty or marker rows
+                if (doctor == null || hours == null) continue;
+                
+                const doctorStr = String(doctor).trim();
+                if (['כניסה', 'חתימה', 'חתימה:', 'סה"כ'].includes(doctorStr)) continue;
+
+                // Convert HH:MM format to decimal
+                if (typeof hours === 'string' && hours.includes(':')) {
+                    const parts = hours.split(':');
+                    if (parts.length === 2) {
+                        const h = parseInt(parts[0]) || 0;
+                        const m = parseInt(parts[1]) || 0;
+                        hours = h + m / 60;
+                    } else {
+                        continue;
+                    }
+                }
+
+                // Ensure hours is a number
+                hours = parseFloat(hours);
+                if (isNaN(hours)) continue;
+
+                records.push({
+                    assistant: assistant,
+                    doctor: doctorStr,
+                    hours: hours
+                });
+            }
+
+            return records;
+        }
+
+        /**
+         * Process Excel file and return summary
+         */
+        function processExcel(workbook) {
+            // Get first sheet
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            
+            // Convert to array of arrays
+            const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+            // Split into tables
+            const tables = splitTables(data);
+            
+            if (tables.length === 0) {
+                return {
+                    success: false,
+                    message: "No tables found. Make sure the file contains 'כניסה' and 'חתימה' markers.",
+                    tablesFound: 0,
+                    recordsCount: 0
+                };
+            }
+
+            // Parse all tables
+            let allRecords = [];
+            for (const table of tables) {
+                allRecords = allRecords.concat(parseTable(table));
+            }
+
+            if (allRecords.length === 0) {
+                return {
+                    success: false,
+                    message: "No data could be extracted from the tables.",
+                    tablesFound: tables.length,
+                    recordsCount: 0
+                };
+            }
+
+            // Group by assistant + doctor and sum hours
+            const grouped = {};
+            for (const record of allRecords) {
+                const key = `${record.assistant}|||${record.doctor}`;
+                if (!grouped[key]) {
+                    grouped[key] = { assistant: record.assistant, doctor: record.doctor, hours: 0 };
+                }
+                grouped[key].hours += record.hours;
+            }
+
+            // Convert to array and round hours
+            const summary = Object.values(grouped).map(item => ({
+                ...item,
+                hours: Math.round(item.hours * 100) / 100
+            }));
+
+            return {
+                success: true,
+                message: `Successfully processed ${tables.length} tables with ${allRecords.length} records.`,
+                tablesFound: tables.length,
+                recordsCount: allRecords.length,
+                summary: summary
+            };
+        }
+
+        /**
+         * Create and download Excel file
+         */
+        function downloadExcel(summary) {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Create data array with headers
+            const data = [
+                ['Assistant', 'Doctor', 'Hours']
+            ];
+            
+            for (const row of summary) {
+                data.push([row.assistant, row.doctor, row.hours]);
+            }
+            
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 20 },
+                { wch: 20 },
+                { wch: 10 }
+            ];
+            
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+            
+            // Download
+            XLSX.writeFile(wb, 'hours_summary.xlsx');
+        }
+
+        // Show result
+        const showResult = (result) => {
+            resultCard.classList.remove('hidden');
+            
+            if (result.success) {
+                resultHeader.className = 'result-header success';
+                resultTitle.textContent = '✨ Processing Complete!';
+                tablesFound.textContent = result.tablesFound;
+                recordsCount.textContent = result.recordsCount;
+                stats.classList.remove('hidden');
+                resultMessage.textContent = result.message;
+                downloadBtn.classList.remove('hidden');
+                processedData = result.summary;
+            } else {
+                resultHeader.className = 'result-header error';
+                resultTitle.textContent = '❌ Processing Failed';
+                stats.classList.add('hidden');
+                resultMessage.textContent = result.message;
+                downloadBtn.classList.add('hidden');
+                processedData = null;
+            }
+            
+            resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+
+        // Process file
+        const processFile = async () => {
+            if (!selectedFile) return;
+            
+            showLoading();
+            
+            try {
+                const data = await selectedFile.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const result = processExcel(workbook);
+                
+                // Small delay for UX
+                setTimeout(() => {
+                    hideLoading();
+                    showResult(result);
+                }, 500);
+                
+            } catch (error) {
+                hideLoading();
+                showResult({ 
+                    success: false, 
+                    message: 'Error reading file: ' + error.message,
+                    tablesFound: 0,
+                    recordsCount: 0
+                });
+            }
+        };
+
+        // Reset everything
+        const resetAll = () => {
+            resetFileSelection();
+            resultCard.classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Event Listeners
+        browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        // Drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'));
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'));
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleFileSelect(files[0]);
+        });
+
+        removeFile.addEventListener('click', resetFileSelection);
+        processBtn.addEventListener('click', processFile);
+        resetBtn.addEventListener('click', resetAll);
+        
+        downloadBtn.addEventListener('click', () => {
+            if (processedData) {
+                downloadExcel(processedData);
+            }
+        });
+
+        // Prevent default drag on document
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.addEventListener(eventName, (e) => e.preventDefault());
+        });
+    </script>
+</body>
+</html>
